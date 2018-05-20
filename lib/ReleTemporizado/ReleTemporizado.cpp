@@ -35,6 +35,10 @@ void ReleTemporizado::setVerbose(uint8_t) {
 }
 
 
+bool ReleTemporizado::isDirty() {
+    return dirty;
+}
+
 bool ReleTemporizado::isActive() {
     return estado;
 }
@@ -129,7 +133,7 @@ void ReleTemporizado::enciendeDeA(int startH, int startM, int endH, int endM) {
       addAlarm(idstart, idend);
       if (verbose) bot->sendMessage(BOTchat_id, "\xF0\x9F\x91\x8D Programado un riego " + descPrograma(startH, startM, endH, endM), "");
 
-      this->dirty = true;
+      dirty = true;
   }
   else {
       bot->sendMessage(BOTchat_id, "Uhm... no puedo programar " + descPrograma(startH, startM, endH, endM), "");
@@ -140,14 +144,14 @@ void ReleTemporizado::desactiva(uint8_t id) {
     if (verbose) bot->sendMessage(BOTchat_id, "\xF0\x9F\x91\x8D Desactivo el programa " + String(id), "");
     // Por claridad, los programas empiezan por 1, asi que el id real es uno menos
     _desactiva(id-1);
-    this->dirty = true;
+    dirty = true;
 }
 
 void ReleTemporizado::activa(uint8_t id) {
     if (verbose) bot->sendMessage(BOTchat_id, "\xF0\x9F\x91\x8D Activo el programa " + String(id), "");
     // Por claridad, los programas empiezan por 1, asi que el id real es uno menos
     _activa(id-1);
-    this->dirty = true;
+    dirty = true;
 }
 
 void ReleTemporizado::activa() {
@@ -157,7 +161,7 @@ void ReleTemporizado::activa() {
         Alarm.enable(alarms[id].startAlarmId);
         Alarm.enable(alarms[id].endAlarmId);
     }
-    this->dirty = true;
+    dirty = true;
 }
 
 
@@ -169,7 +173,7 @@ void ReleTemporizado::desactiva() {
         Alarm.disable(alarms[id].startAlarmId);
         Alarm.disable(alarms[id].endAlarmId);
     }
-    this->dirty = true;
+    dirty = true;
 }
 
 void ReleTemporizado::enciendeUnaVez() {
@@ -290,6 +294,8 @@ void ReleTemporizado::loadFromEeprom(int start) {
         }
     }
 
+    dirty = false;
+
 }
 
 void ReleTemporizado::saveToEeprom(int start) {
@@ -311,7 +317,7 @@ void ReleTemporizado::saveToEeprom(int start) {
     EEPROM.commit();
     bot->sendMessage(BOTchat_id, "\xF0\x9F\x91\x8D Programacion guardada", "");
 
-    this->dirty = false;
+    dirty = false;
 }
 
 
@@ -321,7 +327,7 @@ void ReleTemporizado::borraPrograma(int idAlarm) {
     } else {
         bot->sendMessage(BOTchat_id, "\xF0\x9F\x91\x8D Borrado el programa " + descPrograma(alarms[idAlarm-1]), "");
         removeAlarm(idAlarm-1);
-        this->dirty = true;
+        dirty = true;
     }
 }
 
@@ -348,12 +354,12 @@ void ReleTemporizado::_activa(uint8_t id) {
     alarms[id].isEnabled = 1;
     Alarm.enable(alarms[id].startAlarmId);
     Alarm.enable(alarms[id].endAlarmId);
-    this->dirty = true;
+    dirty = true;
 }
 
 void ReleTemporizado::_desactiva(uint8_t id) {
     alarms[id].isEnabled = 0;
     Alarm.disable(alarms[id].startAlarmId);
     Alarm.disable(alarms[id].endAlarmId);
-    this->dirty = true;
+    dirty = true;
 }

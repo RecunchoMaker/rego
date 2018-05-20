@@ -374,6 +374,8 @@ void loop() {
 
   handleNewMessages(numNewMessages);
 
+  Serial.print(riego.isDirty());
+  Serial.print(" ");
   Serial.print(secsToNextAlarm);
   Serial.print(" ");
   Serial.print( (millis() - last_message) / 1000 );
@@ -385,7 +387,7 @@ void loop() {
           ) {
       Serial.print("Sin alarmas a la vista. A dormir");
       // Grabo programas sin guardar
-      if (riego.dirty)
+      if (riego.isDirty())
           riego.saveToEeprom(0);
       delay(1000);
       ESP.deepSleep(SLEEP_TIME * 1000000);

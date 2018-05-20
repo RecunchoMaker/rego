@@ -65,6 +65,7 @@ public:
   uint8_t alarmCount = 0;
 
   bool isActive();
+  bool isDirty();
 
   void setVerbose(uint8_t v);
 
