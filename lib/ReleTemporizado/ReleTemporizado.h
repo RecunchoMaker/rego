@@ -28,6 +28,7 @@ public:
   int pin;
   int defaultTime; // seconds between on and off
   bool estado;
+  bool dirty;
 
   struct strAlarm {
       uint8_t startAlarmId;

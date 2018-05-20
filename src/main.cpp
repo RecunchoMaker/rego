@@ -29,14 +29,16 @@ WiFiUDP udp;
 EasyNTPClient ntpClient(udp, "193.92.150.3", ((2*60*60))); // IST = GMT + 2
 char ssid[] = WIFI_SSID;
 char password[] = WIFI_PASSWORD;
-#define BOTmax_timeout 600
+#define BOTmax_timeout 60
 
 #define ALARM_DELAY 500 // Tiempo de espera procesando alarmas
 
 // Tiempos para configuracion de deep sleep. Siempre en segundos
-#define SLEEP_TIME 60 * 10             // Tiempo de deepsleep
+#define SLEEP_TIME 60 * 15             // Tiempo de deepsleep
 #define TIME_AWAKE_BEFORE_ALARM  60 * 5  
-#define TIME_AWAKE_WHEN_MESSAGES 600 * 5  // Una vez recibido un mensaje, cuanto tiempo tardo en dormir
+
+// Una vez recibido un mensaje, cuanto tarda en dormir (en segundos)
+#define TIME_AWAKE_WHEN_MESSAGES 60
 
 WiFiClientSecure client;
 UniversalTelegramBot bot(BOTtoken, client);
@@ -260,6 +262,9 @@ void setup() {
   // Apago todo en el inicio
   riego.off("");
 
+  // D0 to RST to wake up
+  pinMode(D0, WAKEUP_PULLUP);
+
   Serial.begin(74880);
   EEPROM.begin(1024);
 
@@ -306,8 +311,6 @@ void setup() {
 
   last_wifi_check = millis();
   last_message = millis();
-  // #define WIFI_CHECK_INTERVAL 1000*60*10
-  #define WIFI_CHECK_INTERVAL 1000*60
 
   // Sincronizar fecha y hora
 
@@ -342,6 +345,8 @@ void setup() {
   tickerOSWatch.attach_ms(((OSWATCH_RESET_TIME / 3) * 1000), osWatch);
   
   riego.setVerbose(1);
+
+  ArduinoOTA.begin();
 }
 
 void loop() {
@@ -355,9 +360,9 @@ void loop() {
     
   unsigned long secsToNextAlarm = (unsigned long) Alarm.getNextTrigger() - (unsigned long) now();
 
-  int timeout = (secsToNextAlarm > BOTmax_timeout || 
+  bot.longPoll = (secsToNextAlarm > BOTmax_timeout || 
                  secsToNextAlarm < 0 ? 600: BOTmax_timeout);
-  int numNewMessages = bot.getUpdates(bot.last_message_received + 1, timeout);
+  int numNewMessages = bot.getUpdates(bot.last_message_received + 1);
   if (numNewMessages > 0) {
       last_message = millis();
 
@@ -378,8 +383,10 @@ void loop() {
           and millis() - last_message > TIME_AWAKE_WHEN_MESSAGES * 1000  // si acabo de enviar mensaje no duermo
           and !riego.isActive()   // Si esta encendido no duermo
           ) {
-      Serial.print("Ultimo nensaje ");
-      Serial.print("Sin alarmas a la vista. A dormir. Siguiente alarma en: ");
+      Serial.print("Sin alarmas a la vista. A dormir");
+      // Grabo programas sin guardar
+      if (riego.dirty)
+          riego.saveToEeprom(0);
       delay(1000);
       ESP.deepSleep(SLEEP_TIME * 1000000);
   }
@@ -387,6 +394,9 @@ void loop() {
   if(HEAPCHECKER){          // losing bytes work around
     tcpCleanup();           
   }
+
+  // Handle OTA
+  ArduinoOTA.handle();
 
 }
 
