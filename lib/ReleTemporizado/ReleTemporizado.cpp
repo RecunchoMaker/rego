@@ -12,7 +12,7 @@
 
 // Numero arbitrario por el que empiezan los datos de la EEPROM
 // Si no es este numero, implica que es el primer inicio
-#define EEPROM_ID (uint8_t) 15
+#define EEPROM_ID (uint8_t) 25
 
 //**************************************************************
 //* Class Constructor

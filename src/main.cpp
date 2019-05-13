@@ -1,5 +1,4 @@
 #include <Arduino.h>
-#include "lwip/tcp_impl.h"   // tcp leak
 #include <ESP8266WiFi.h>
 #include <WiFiClientSecure.h>
 #include <UniversalTelegramBot.h>
@@ -244,20 +243,12 @@ time_t updateTime() {
 
 
 /*********************************************************************
- * Evita memory leaks en la pila tcp
- * https://github.com/esp8266/Arduino/issues/1923
- ********************************************************************/
-void tcpCleanup()   // losing bytes work around
-{
-  while(tcp_tw_pcbs!=NULL)
-  {
-    tcp_abort(tcp_tw_pcbs);
-  }
-}
-/*********************************************************************
  * setup
  ********************************************************************/
 void setup() {
+
+  // Something is wrong with https connections
+  client.setInsecure();
 
   // Apago todo en el inicio
   riego.off("");
@@ -323,7 +314,6 @@ void setup() {
   }
 
   // Mensaje de bienvenida
-  
   String mensaje = "Hola! soy *Riego*. Acabo de encenderme \xF0\x9F\x98\x81\n";
 
   if (timeStatus() == timeNotSet) {
@@ -391,10 +381,6 @@ void loop() {
           riego.saveToEeprom(0);
       delay(1000);
       ESP.deepSleep(SLEEP_TIME * 1000000);
-  }
-
-  if(HEAPCHECKER){          // losing bytes work around
-    tcpCleanup();           
   }
 
   // Handle OTA

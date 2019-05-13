@@ -12,7 +12,7 @@
 
 [common]
 lib_deps = 
-  ArduinoJson
+  ArduinoJson @5.13.2
   UniversalTelegramBot
   EasyNTPClient
   Time
