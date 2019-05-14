@@ -7,6 +7,7 @@
 #include <TimeLib.h>
 #include <TimeAlarms.h>
 #include <UniversalTelegramBot.h>
+#include <PubSubClient.h>
 #include <EEPROM.h>
 
 #define BOTchat_id "7579267"
@@ -40,7 +41,7 @@ public:
 
   uint8_t verbose = 0;
 
-  ReleTemporizado(int pin, UniversalTelegramBot &bot);
+  ReleTemporizado(int pin, UniversalTelegramBot &bot, PubSubClient &mqtt);
   void enciende();
 
   void on(String mensaje);
@@ -70,6 +71,7 @@ public:
   void setVerbose(uint8_t v);
 
   UniversalTelegramBot *bot;
+  PubSubClient *mqtt;
 
 private:
   bool checkAlarmInterval(int sH, int sM, int eH, int eM);

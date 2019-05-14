@@ -1,6 +1,7 @@
 #include "TimeLib.h"
 #include "TimeAlarms.h"
 #include <ReleTemporizado.h>
+#include <PubSubClient.h>
 
 // tiempo en minutos cuando se enciende con la orden "enciende"
 #define DEFAULT_TIME 10
@@ -18,13 +19,14 @@
 //* Class Constructor
 
 //ReleTemporizado::ReleTemporizado(int pin, UniversalTelegramBot &bot)
-ReleTemporizado::ReleTemporizado(int pin, UniversalTelegramBot &bot)
+ReleTemporizado::ReleTemporizado(int pin, UniversalTelegramBot &bot, PubSubClient &mqtt)
 {
    this->pin = pin; 
    pinMode(pin, OUTPUT);
    this->defaultTime = 5; // 5 minutos
    this->estado = false;
    this->bot = &bot;
+   this->mqtt = &mqtt;
    this->verbose = 0;
    this->dirty = false; // Hay nuevos programas sin grabar a EEPROM
    off("");
@@ -45,7 +47,9 @@ bool ReleTemporizado::isActive() {
 
 void ReleTemporizado::on(String mensaje) {
     Serial.println("Rele encendido");
+
     digitalWrite(pin, LOW);   // si, si, al reves
+    mqtt->publish("riego/state", "1");
     if (isActive()) {
         if (verbose) bot->sendMessage(BOTchat_id, "Ya esta encendido", "");
     }
@@ -58,6 +62,7 @@ void ReleTemporizado::on(String mensaje) {
 void ReleTemporizado::off(String mensaje) {
     Serial.println("Rele apagado");
     digitalWrite(pin, HIGH); 
+    mqtt->publish("riego/state", "0");
     
     if (isActive()) {
         bot->sendMessage(BOTchat_id, mensaje, "");

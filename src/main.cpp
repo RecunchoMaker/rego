@@ -9,6 +9,7 @@
 #include <Ticker.h>
 #include <ArduinoOTA.h>
 #include <ESP8266mDNS.h>
+#include <PubSubClient.h>
 
 extern "C" {
 #include <user_interface.h>
@@ -28,7 +29,8 @@ WiFiUDP udp;
 EasyNTPClient ntpClient(udp, "193.92.150.3", ((2*60*60))); // IST = GMT + 2
 char ssid[] = WIFI_SSID;
 char password[] = WIFI_PASSWORD;
-#define BOTmax_timeout 60
+char mqtt_broker[] = MQTT_BROKER;
+#define BOTmax_timeout 5
 
 #define ALARM_DELAY 500 // Tiempo de espera procesando alarmas
 
@@ -40,8 +42,10 @@ char password[] = WIFI_PASSWORD;
 #define TIME_AWAKE_WHEN_MESSAGES 60
 
 WiFiClientSecure client;
+WiFiClient nclient;
+PubSubClient mqtt(nclient);
 UniversalTelegramBot bot(BOTtoken, client);
-ReleTemporizado riego(PIN_RIEGO, bot); // builtin led de wemos
+ReleTemporizado riego(PIN_RIEGO, bot, mqtt); // builtin led de wemos
 MatchState ms; // regular expressions
 
 
@@ -241,6 +245,51 @@ time_t updateTime() {
     return ntpClient.getUnixTime();
 }
 
+/*********************************************************************
+ * mqtt staff
+ ********************************************************************/
+void callback(char* topic, byte* payload, unsigned int length) {
+  Serial.print("Message arrived [");
+  Serial.print(topic);
+  Serial.print("] ");
+  for (int i = 0; i < length; i++) {
+    Serial.print((char)payload[i]);
+  }
+  Serial.println();
+
+  // Switch on the LED if an 1 was received as first character
+  if ((char)payload[0] == '1') {
+    Serial.println("Enciendo riego");
+    riego.enciendeUnaVez();
+  } else {
+    Serial.println("Apago riego");
+    riego.off("Apago riego");
+  }
+
+}
+
+void reconnect() {
+  // Loop until we're reconnected
+  while (!mqtt.connected()) {
+    Serial.print("Attempting MQTT connection...");
+    // Create a random client ID
+    String clientId = "riego-";
+    clientId += String(random(0xffff), HEX);
+    // Attempt to connect
+    if (mqtt.connect(clientId.c_str())) {
+      Serial.println("connected");
+      mqtt.subscribe("riego/set");
+    } else {
+      Serial.print("failed, rc=");
+      Serial.print(mqtt.state());
+      Serial.println(" try again in 5 seconds");
+      // Wait 5 seconds before retrying
+      delay(5000);
+    }
+  }
+}
+
+
 
 /*********************************************************************
  * setup
@@ -250,13 +299,17 @@ void setup() {
   // Something is wrong with https connections
   client.setInsecure();
 
+
+  mqtt.setServer(mqtt_broker, 1883);
+  mqtt.setCallback(callback);
+
   // Apago todo en el inicio
   riego.off("");
 
   // D0 to RST to wake up
   pinMode(D0, WAKEUP_PULLUP);
 
-  Serial.begin(74880);
+  Serial.begin(115200);
   EEPROM.begin(1024);
 
   // Set WiFi to station mode and disconnect from an AP if it was Previously
@@ -313,6 +366,10 @@ void setup() {
     delay(500);
   }
 
+  if (!client.connected()) {
+    reconnect();
+  }
+
   // Mensaje de bienvenida
   String mensaje = "Hola! soy *Riego*. Acabo de encenderme \xF0\x9F\x98\x81\n";
 
@@ -343,15 +400,30 @@ void loop() {
 
   last_loop = millis();
 
-  Alarm.delay(ALARM_DELAY);
+
+  // Alarm.delay(ALARM_DELAY);
+  unsigned long start = millis();
+  while (millis() - start  <= ALARM_DELAY) {
+    Alarm.serviceAlarms();
+    // Handle OTA
+    ArduinoOTA.handle();
+
+    // Handle mqtt
+    if (!client.connected()) {
+      reconnect();
+    }
+    mqtt.loop();
+  }
+
 
   // Calculo si espero por mensajes del telegram el tiempo maximo
   // o hay alguna alarma inminente
     
   unsigned long secsToNextAlarm = (unsigned long) Alarm.getNextTrigger() - (unsigned long) now();
 
-  bot.longPoll = (secsToNextAlarm > BOTmax_timeout || 
-                 secsToNextAlarm < 0 ? 600: BOTmax_timeout);
+  //bot.longPoll = (secsToNextAlarm > BOTmax_timeout || 
+  //               secsToNextAlarm < 0 ? 600: BOTmax_timeout);
+  bot.longPoll = 5;
   int numNewMessages = bot.getUpdates(bot.last_message_received + 1);
   if (numNewMessages > 0) {
       last_message = millis();
@@ -377,14 +449,11 @@ void loop() {
           ) {
       Serial.print("Sin alarmas a la vista. A dormir");
       // Grabo programas sin guardar
-      if (riego.isDirty())
-          riego.saveToEeprom(0);
-      delay(1000);
-      ESP.deepSleep(SLEEP_TIME * 1000000);
+      //if (riego.isDirty())
+      //    riego.saveToEeprom(0);
+      //delay(1000);
+      //ESP.deepSleep(SLEEP_TIME * 1000000);
   }
-
-  // Handle OTA
-  ArduinoOTA.handle();
 
 }
 

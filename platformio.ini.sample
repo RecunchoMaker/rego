@@ -27,6 +27,7 @@ build_flags =
   $[common]
   -D'WIFI_SSID="yourwifisid"'
   -D'WIFI_PASSWORD="yourwifipassword"'
+  -D'MQTT_BROKER="name_or_ip"'
   -D'BOTtoken="XXXXXXXXX:XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"'
   -D'BOTchat_id="YOURCHATID"'
   -D'HOSTNAME="riego"'

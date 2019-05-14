@@ -76,13 +76,13 @@ class TimeAlarmsClass
 {
 private:
   AlarmClass Alarm[dtNBR_ALARMS];
-  void serviceAlarms();
   uint8_t isServicing;
   uint8_t servicedAlarmId; // the alarm currently being serviced
   AlarmID_t create(time_t value, OnTick_t onTickHandler, uint8_t isOneShot, dtAlarmPeriod_t alarmType);
 
 public:
   TimeAlarmsClass();
+  void serviceAlarms();
   // functions to create alarms and timers
 
   // trigger once at the given time in the future
